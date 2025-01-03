@@ -169,30 +169,34 @@ jobs:
         id: build_package
         run: |
           cd ${{ github.workspace }}/main
-          sed -i '' "30s#.*#BUNDLE_ID = ${{ env.BUNDLE_ID }}#g" Makefile                          # Modify the bundle ID
-          sed -i '' "29s#.*#DISPLAY_NAME = ${{ env.APP_NAME }}#g" Makefile                        # Modify the app name
-          sed -i '' "1s#.*#export TARGET = iphone:clang:${{ inputs.sdk_version }}:14.0#g" Makefile # Modify the SDK version
-          make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1
-          echo "package=$(ls -t packages | head -n1)" >>$GITHUB_OUTPUT
-          echo -e "==> \033[1mSHASUM256: $(shasum -a 256 packages/*.ipa | cut -f1 -d' ')\033[0m"
-          echo -e "==> \033[1mBundle ID: ${{ env.BUNDLE_ID }}\033[0m"
-
-        env:
-          THEOS: ${{ github.workspace }}/theos
-          UYOU_VERSION: ${{ inputs.uyou_version }}
-          BUNDLE_ID: ${{ inputs.bundle_id }}
-          APP_NAME: ${{ inputs.app_name }}
-
-      - name: Upload Artifact
-        if: ${{ inputs.upload_artifact }}
-        uses: actions/upload-artifact@v4.4.3
-        env:
-          UYOU_VERSION: ${{ inputs.uyou_version }}
-          YOUTUBE_VERSION: ${{ steps.prepare_youtube.outputs.youtube_version }}
-        with:
-          name: uYouEnhanced_${{ env.YOUTUBE_VERSION }}_${{ env.UYOU_VERSION }}
-          path: ${{ github.workspace }}/main/packages/${{ steps.build_package.outputs.package }}
-          if-no-files-found: error
+          
+          # First, let's verify that we're in the correct directory
+          echo "==> Current working directory:"
+          pwd
+          
+          # Let's check if Theos environment variable is set correctly
+          echo "==> THEOS environment variable:"
+          echo $THEOS
+          
+          # Now verify the SDK accessibility
+          echo "==> Verifying SDK accessibility:"
+          ls -la "$THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to list SDK directory"
+          
+          # Test SDK path resolution to check for any symbolic link issues
+          echo "==> Testing SDK path resolution:"
+          realpath "$THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to resolve SDK path"
+          
+          # Let's also check the SDK directory permissions all the way up
+          echo "==> Checking parent directory permissions:"
+          ls -la "$THEOS/sdks"
+          
+          # Now proceed with the original commands
+          sed -i '' "30s#.*#BUNDLE_ID = ${{ env.BUNDLE_ID }}#g" Makefile
+          sed -i '' "29s#.*#DISPLAY_NAME = ${{ env.APP_NAME }}#g" Makefile
+          sed -i '' "1s#.*#export TARGET = iphone:clang:${{ inputs.sdk_version }}:14.0#g" Makefile
+          
+          # Add verbose flag to make for more detailed output
+          make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1 VERBOSE=1
 
       - name: Create Release
         if: ${{ inputs.create_release }}
