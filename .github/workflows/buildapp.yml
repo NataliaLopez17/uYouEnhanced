@@ -1,6 +1,3 @@
-# Original idea by @ISnackable. Thanks to him for handling the hardest parts!
-# https://github.com/ISnackable/YTCubePlus/blob/main/.github/workflows/Build.yml
-
 name: Build and Release uYouEnhanced
 
 on:
@@ -96,36 +93,10 @@ jobs:
           # First clone the SDK repository
           git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/aricloverALT/sdks/
           cd sdks
-          
-          # Let's see what's in the repository initially
-          echo "==> Checking repository contents before sparse checkout:"
-          ls -la
-          
-          # Perform the sparse checkout
           git sparse-checkout set --no-cone iPhoneOS${{ inputs.sdk_version }}.sdk
           git checkout
-          
-          # Check what files we got after checkout
-          echo "==> Contents after sparse checkout:"
-          ls -la
-          
-          # Create the destination directory if it doesn't exist
           mkdir -p $THEOS/sdks
-          
-          # Check the Theos directory structure
-          echo "==> Current Theos directory structure:"
-          ls -la $THEOS
-          echo "==> Contents of Theos sdks directory (before moving):"
-          ls -la $THEOS/sdks
-          
-          # Move the SDK files and verify the move
-          mv *.sdk $THEOS/sdks || echo "Error: Failed to move SDK files"
-          
-          # Verify the final state
-          echo "==> Final contents of Theos sdks directory:"
-          ls -la $THEOS/sdks
-          echo "==> Checking specific SDK path that will be used:"
-          ls -la $THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk || echo "SDK directory not found in expected location"
+          mv *.sdk $THEOS/sdks
         env:
           THEOS: ${{ github.workspace }}/theos
 
@@ -160,42 +131,42 @@ jobs:
           echo "==> YouTube v$youtube_version downloaded!"
           sed -i '' "17s#.*#YOUTUBE_VERSION = ${youtube_version}#g" Makefile
           echo "youtube_version=${youtube_version}" >> $GITHUB_OUTPUT
-
         env:
           THEOS: ${{ github.workspace }}/theos
           YOUTUBE_URL: ${{ env.URL_YT }}
 
       - name: Fix compiling & Build Package
         id: build_package
+        env:
+          THEOS: ${{ github.workspace }}/theos
         run: |
           cd ${{ github.workspace }}/main
           
-          # First, let's verify that we're in the correct directory
+          # Debug: Print current working directory and environment
           echo "==> Current working directory:"
           pwd
-          
-          # Let's check if Theos environment variable is set correctly
-          echo "==> THEOS environment variable:"
+          echo "==> THEOS path:"
           echo "$THEOS"
           
-          # Now verify the SDK accessibility with the full path
-          echo "==> Verifying SDK accessibility:"
-          ls -la "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to list SDK directory"
+          # Verify Theos directory structure
+          echo "==> Checking Theos directory structure:"
+          ls -la $THEOS
+          echo "==> Checking Theos makefiles:"
+          ls -la $THEOS/makefiles || echo "makefiles directory missing!"
           
-          # Test SDK path resolution with the full path
-          echo "==> Testing SDK path resolution:"
-          realpath "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to resolve SDK path"
+          # Verify SDK accessibility
+          echo "==> Checking SDK directory:"
+          ls -la "$THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "SDK directory not found!"
           
-          # Let's also check the SDK directory permissions all the way up
-          echo "==> Checking parent directory permissions:"
-          ls -la "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks"
-          
-          # Now proceed with the original commands
-          sed -i '' "30s#.*#BUNDLE_ID = ${{ env.BUNDLE_ID }}#g" Makefile
-          sed -i '' "29s#.*#DISPLAY_NAME = ${{ env.APP_NAME }}#g" Makefile
+          # Update Makefile configurations
+          sed -i '' "30s#.*#BUNDLE_ID = ${{ inputs.bundle_id }}#g" Makefile
+          sed -i '' "29s#.*#DISPLAY_NAME = ${{ inputs.app_name }}#g" Makefile
           sed -i '' "1s#.*#export TARGET = iphone:clang:${{ inputs.sdk_version }}:14.0#g" Makefile
           
-          # Add verbose flag to make for more detailed output
+          # Ensure THEOS is exported for child processes
+          export THEOS=${{ github.workspace }}/theos
+          
+          # Build package with verbose output
           make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1 VERBOSE=1
 
       - name: Create Release
