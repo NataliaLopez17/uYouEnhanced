@@ -176,19 +176,19 @@ jobs:
           
           # Let's check if Theos environment variable is set correctly
           echo "==> THEOS environment variable:"
-          echo $THEOS
+          echo "$THEOS"
           
-          # Now verify the SDK accessibility
+          # Now verify the SDK accessibility with the full path
           echo "==> Verifying SDK accessibility:"
-          ls -la "$THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to list SDK directory"
+          ls -la "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to list SDK directory"
           
-          # Test SDK path resolution to check for any symbolic link issues
+          # Test SDK path resolution with the full path
           echo "==> Testing SDK path resolution:"
-          realpath "$THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to resolve SDK path"
+          realpath "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk/" || echo "Failed to resolve SDK path"
           
           # Let's also check the SDK directory permissions all the way up
           echo "==> Checking parent directory permissions:"
-          ls -la "$THEOS/sdks"
+          ls -la "/Users/runner/work/uYouEnhanced/uYouEnhanced/theos/sdks"
           
           # Now proceed with the original commands
           sed -i '' "30s#.*#BUNDLE_ID = ${{ env.BUNDLE_ID }}#g" Makefile
