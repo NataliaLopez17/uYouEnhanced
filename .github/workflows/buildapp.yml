@@ -93,11 +93,39 @@ jobs:
       - name: Download iOS SDK
         if: steps.SDK.outputs.cache-hit != 'true'
         run: |
+          # First clone the SDK repository
           git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/aricloverALT/sdks/
           cd sdks
+          
+          # Let's see what's in the repository initially
+          echo "==> Checking repository contents before sparse checkout:"
+          ls -la
+          
+          # Perform the sparse checkout
           git sparse-checkout set --no-cone iPhoneOS${{ inputs.sdk_version }}.sdk
           git checkout
-          mv *.sdk $THEOS/sdks
+          
+          # Check what files we got after checkout
+          echo "==> Contents after sparse checkout:"
+          ls -la
+          
+          # Create the destination directory if it doesn't exist
+          mkdir -p $THEOS/sdks
+          
+          # Check the Theos directory structure
+          echo "==> Current Theos directory structure:"
+          ls -la $THEOS
+          echo "==> Contents of Theos sdks directory (before moving):"
+          ls -la $THEOS/sdks
+          
+          # Move the SDK files and verify the move
+          mv *.sdk $THEOS/sdks || echo "Error: Failed to move SDK files"
+          
+          # Verify the final state
+          echo "==> Final contents of Theos sdks directory:"
+          ls -la $THEOS/sdks
+          echo "==> Checking specific SDK path that will be used:"
+          ls -la $THEOS/sdks/iPhoneOS${{ inputs.sdk_version }}.sdk || echo "SDK directory not found in expected location"
         env:
           THEOS: ${{ github.workspace }}/theos
 
